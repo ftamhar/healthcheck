@@ -15,6 +15,7 @@ import (
 
 const (
 	dateFormat = "2006-01-02 15:04:05 MST"
+	idFormat   = "02-01-2006 15:04:05 MST"
 )
 
 var (
@@ -76,7 +77,8 @@ func (i *emails) Set(s string) error {
 }
 
 type Check struct {
-	Server string
+	Server    string
+	LastCheck string
 }
 
 func main() {
@@ -90,21 +92,12 @@ func main() {
 		log.Fatalln("email tujuan harus di isi (boleh banyak). contoh: -email admin@local.com -email user@local.com")
 	}
 
-	server := Check{*address}
-
-	tmpl := template.Must(template.ParseFS(emailHtml, "email.html"))
-
-	var s = new(strings.Builder)
-	err := tmpl.Execute(s, server)
-	if err != nil {
-		panic(err.Error())
-	}
+	server := Check{Server: *address}
 
 	email := mail.NewMSG()
 	email.SetFrom("From Me <me@host.com>")
 	email.AddTo(myEmails...)
 	email.SetSubject("Notifikasi Server")
-	email.SetBody(mail.TextHTML, s.String())
 
 	t := time.Tick(*bounce * time.Second)
 
@@ -113,21 +106,31 @@ func main() {
 		select {
 		case <-t:
 			_, err := http.Get(*address)
+			now := time.Now()
 			if err != nil {
 				log.Printf("%s tidak dapat diakses, mengirim notifikasi...", *address)
 				err = newClient()
 				handleError(err)
 
-				now := time.Now()
-				sNow := now.Format(dateFormat)
+				tmpl := template.Must(template.ParseFS(emailHtml, "email.html"))
 
+				var s = new(strings.Builder)
+				err := tmpl.Execute(s, server)
+				if err != nil {
+					panic(err.Error())
+				}
+
+				sNow := now.Format(dateFormat)
 				email = email.SetDate(sNow)
+				email.SetBody(mail.TextHTML, s.String())
 				err = email.Send(client)
 				handleError(err)
 
 				time.Sleep(*delay * time.Hour)
 				continue
 			}
+			sNow := now.Format(idFormat)
+			server.LastCheck = sNow
 		}
 	}
 }

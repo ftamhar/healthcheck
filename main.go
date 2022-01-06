@@ -93,6 +93,9 @@ func main() {
 	}
 
 	server := Check{Server: *address}
+	var now time.Time
+	var err error
+	var tmpl = new(template.Template)
 
 	email := mail.NewMSG()
 	email.SetFrom("From Me <me@host.com>")
@@ -105,32 +108,29 @@ func main() {
 	for {
 		select {
 		case <-t:
-			_, err := http.Get(*address)
-			now := time.Now()
+			_, err = http.Get(*address)
+			now = time.Now()
 			if err != nil {
-				log.Printf("%s tidak dapat diakses, mengirim notifikasi...", *address)
 				err = newClient()
 				handleError(err)
 
-				tmpl := template.Must(template.ParseFS(emailHtml, "email.html"))
-
 				var s = new(strings.Builder)
-				err := tmpl.Execute(s, server)
-				if err != nil {
-					panic(err.Error())
-				}
+				tmpl = template.Must(template.ParseFS(emailHtml, "email.html"))
 
-				sNow := now.Format(dateFormat)
-				email = email.SetDate(sNow)
+				err = tmpl.Execute(s, server)
+				handleError(err)
+
+				email = email.SetDate(now.Format(dateFormat))
 				email.SetBody(mail.TextHTML, s.String())
 				err = email.Send(client)
 				handleError(err)
 
+				log.Printf("%s tidak dapat diakses, notifikasi telah dikirim...", *address)
+
 				time.Sleep(*delay * time.Hour)
 				continue
 			}
-			sNow := now.Format(idFormat)
-			server.LastCheck = sNow
+			server.LastCheck = now.Format(idFormat)
 		}
 	}
 }

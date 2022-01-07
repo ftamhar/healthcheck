@@ -18,37 +18,38 @@ const (
 	idFormat   = "02-01-2006 15:04:05 MST"
 )
 
+type emails []string
+
+func (e *emails) String() string {
+	return "Oke deh"
+}
+
+func (i *emails) Set(s string) error {
+	*i = append(*i, s)
+	return nil
+}
+
 var (
 	myEmails emails
 
 	server = new(mail.SMTPServer)
 	client = new(mail.SMTPClient)
 
-	email_host     = new(string)
-	email_username = new(string)
-	email_password = new(string)
-	address        = new(string)
+	email_host     = flag.String("h", "", "email host")
+	email_username = flag.String("u", "", "email username")
+	email_password = flag.String("p", "", "email password")
+	address        = flag.String("a", "", "alamat server yang akan dicek")
 
-	email_port = new(int)
+	email_port = flag.Int("port", 0, "email port")
 
-	delay  = new(time.Duration)
-	bounce = new(time.Duration)
+	delay  = flag.Duration("d", 3, "durasi di cek kembali setelah error (JAM)")
+	bounce = flag.Duration("b", 10, "durasi di cek kembali setelah error (DETIK)")
 
 	//go:embed email.html
 	emailHtml embed.FS
 )
 
 func init() {
-	email_host = flag.String("h", "", "email host")
-	email_username = flag.String("u", "", "email username")
-	email_password = flag.String("p", "", "email password")
-	address = flag.String("a", "", "alamat server yang akan dicek")
-
-	email_port = flag.Int("port", 0, "email port")
-
-	delay = flag.Duration("d", 3, "durasi di cek kembali setelah error (JAM)")
-	bounce = flag.Duration("b", 10, "durasi di cek kembali setelah error (DETIK)")
-
 	flag.Var(&myEmails, "email", "list email yang akan dinotifikasi")
 }
 
@@ -62,18 +63,7 @@ func newClient() (err error) {
 
 	client, err = server.Connect()
 
-	return err
-}
-
-type emails []string
-
-func (e *emails) String() string {
-	return "Oke deh"
-}
-
-func (i *emails) Set(s string) error {
-	*i = append(*i, s)
-	return nil
+	return
 }
 
 type Check struct {
@@ -105,33 +95,30 @@ func main() {
 	t := time.Tick(*bounce * time.Second)
 
 	log.Println("healthcheck started...")
-	for {
-		select {
-		case <-t:
-			_, err = http.Get(*address)
-			now = time.Now()
-			if err != nil {
-				err = newClient()
-				handleError(err)
+	for range t {
+		_, err = http.Get(*address)
+		now = time.Now()
+		if err != nil {
+			err = newClient()
+			handleError(err)
 
-				var s = new(strings.Builder)
-				tmpl = template.Must(template.ParseFS(emailHtml, "email.html"))
+			var s = new(strings.Builder)
+			tmpl = template.Must(template.ParseFS(emailHtml, "email.html"))
 
-				err = tmpl.Execute(s, server)
-				handleError(err)
+			err = tmpl.Execute(s, server)
+			handleError(err)
 
-				email = email.SetDate(now.Format(dateFormat))
-				email.SetBody(mail.TextHTML, s.String())
-				err = email.Send(client)
-				handleError(err)
+			email = email.SetDate(now.Format(dateFormat))
+			email.SetBody(mail.TextHTML, s.String())
+			err = email.Send(client)
+			handleError(err)
 
-				log.Printf("%s tidak dapat diakses, notifikasi telah dikirim...", *address)
+			log.Printf("%s tidak dapat diakses, notifikasi telah dikirim...", *address)
 
-				time.Sleep(*delay * time.Hour)
-				continue
-			}
-			server.LastCheck = now.Format(idFormat)
+			time.Sleep(*delay * time.Hour)
+			continue
 		}
+		server.LastCheck = now.Format(idFormat)
 	}
 }
 

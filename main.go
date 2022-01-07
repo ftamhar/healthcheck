@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	dateFormat = "2006-01-02 15:04:05 MST"
-	idFormat   = "02-01-2006 15:04:05 MST"
+	emailFormat      = "2006-01-02 15:04:05 MST"
+	indonesianFormat = "02-01-2006 15:04:05 MST"
 )
 
 type emails []string
@@ -35,12 +35,12 @@ var (
 	server = new(mail.SMTPServer)
 	client = new(mail.SMTPClient)
 
-	email_host     = flag.String("h", "", "email host")
-	email_username = flag.String("u", "", "email username")
-	email_password = flag.String("p", "", "email password")
+	email_host     = flag.String("h", "", "host email")
+	email_username = flag.String("u", "", "username email")
+	email_password = flag.String("p", "", "password email")
 	address        = flag.String("a", "", "alamat server yang akan dicek")
 
-	email_port = flag.Int("port", 0, "email port")
+	email_port = flag.Int("port", 0, "port email")
 
 	delay  = flag.Duration("d", 3, "durasi di cek kembali setelah error (JAM)")
 	bounce = flag.Duration("b", 10, "durasi di cek kembali setelah error (DETIK)")
@@ -108,7 +108,7 @@ func main() {
 			err = tmpl.Execute(s, server)
 			handleError(err)
 
-			email = email.SetDate(now.Format(dateFormat))
+			email = email.SetDate(now.Format(emailFormat))
 			email.SetBody(mail.TextHTML, s.String())
 			err = email.Send(client)
 			handleError(err)
@@ -118,7 +118,7 @@ func main() {
 			time.Sleep(*delay * time.Hour)
 			continue
 		}
-		server.LastCheck = now.Format(idFormat)
+		server.LastCheck = now.Format(indonesianFormat)
 	}
 }
 

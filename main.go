@@ -43,7 +43,7 @@ var (
 	email_port = flag.Int("port", 0, "port email")
 
 	delay  = flag.Duration("d", 3, "durasi di cek kembali setelah error (JAM)")
-	bounce = flag.Duration("b", 10, "durasi di cek kembali setelah error (DETIK)")
+	bounce = flag.Duration("b", 10, "durasi pengecekan (DETIK)")
 
 	//go:embed email.html
 	emailHtml embed.FS
